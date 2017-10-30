@@ -1,5 +1,7 @@
-const int row[8] = {26, 27, 28, 29, 30, 31, 32, 33 };
-const int col[8] = {38, 39, 40, 41, 42, 43, 44, 45 };
+const int row[8] = {22, 23, 24, 25, 26, 27, 28, 29 };
+const int col[8] = {30, 31, 32, 33, 34, 35, 36, 37 };
+const int row2[8] = {38, 39, 40, 41, 42, 43, 44, 45};
+const int col2[8] = {46, 47, 48, 49, 19, 18, 17, 16};
 
 int number[10][8][4] = {
   {0, 1, 1, 0,  //0
@@ -115,9 +117,14 @@ int PTLight[2][8][8] = {
 #define Down_Y 11
 #define Down_R 12
 #define Botton_1 20 //스위치
-int interval = 30000;
-int BlinkYellow = 3;  //노란불 점멸 카운트
+long interval;
+long IntervalSet = 20000;
+long IntervalAdd = 10000;
+long BlinkYellow = 3;  //노란불 점멸 카운트
+int SDelay = 3000;
 volatile bool state1 = true;  //스위치를 누르면 false로 변환
+
+long CheckTime;
 
 void setup() {
   pinMode(Right_G, OUTPUT);
@@ -138,45 +145,48 @@ void setup() {
    {
     pinMode(row[thisPin], OUTPUT);
     pinMode(col[thisPin], OUTPUT);
+    pinMode(row2[thisPin], OUTPUT);
+    pinMode(col2[thisPin], OUTPUT);
    }
 }
 
 void loop() {
-  unsigned long CheckTime = millis(); //타이머 함수, deley를 이용하여도 millis()는 흐른다
+  //unsigned long CheckTime = millis(); //타이머 함수, deley를 이용하여도 millis()는 흐른다
+  int Time;
+  interval = IntervalSet;
   digitalWrite(Right_G, HIGH);
   digitalWrite(Up_R, HIGH);
   digitalWrite(Left_G, HIGH);
   digitalWrite(Down_R, HIGH);
  
   CheckTime = millis();
-  while(interval > (millis() - CheckTime)) {
-    PSignal(0);
-  }
-  //delay(interval);
-  digitalWrite(Right_G, LOW);
-  digitalWrite(Left_G, LOW);
-  BlinkLED(Right_Y, Left_Y);
-  digitalWrite(Right_R, HIGH);
-  digitalWrite(Left_R, HIGH);
-  
+  SwitchLoop(Right_G, Right_Y, Right_R, Left_G, Left_Y, Left_R);
   digitalWrite(Up_R, LOW);
   digitalWrite(Down_R, LOW);
   digitalWrite(Up_G, HIGH);
   digitalWrite(Down_G, HIGH);
 
-  /*
- CheckTime = millis();
+  CheckTime = millis();
   while(interval > (millis() - CheckTime)) {
     PSignal(0);
+    Time = (interval - (millis() - CheckTime)) / 1000;
+    /*
+    if(state1 == false){
+        interval += IntervalAdd;
+        delay(100);
+    }
+    CleanDOT();
+    state1 = true;
+    */
+    NSignal(Time);
   }
+  interval = IntervalSet;
   digitalWrite(Up_G, LOW);
   digitalWrite(Down_G, LOW);
   BlinkLED(Up_Y, Down_Y);
   digitalWrite(Up_R, HIGH);
   digitalWrite(Down_R, HIGH);
-  */
-  CheckTime = millis();
-  SwitchLoop(Up_G, Up_Y, Up_R, Down_G, Down_Y, Down_R, CheckTime);
+  
   digitalWrite(Left_R, LOW);
   digitalWrite(Right_R, LOW);
   
@@ -184,7 +194,11 @@ void loop() {
 
 // 인터럽트 발생시 호출(스위치를 누를 경우 호출)
 void Botton() {
-  if(digitalRead(Up_G) == HIGH)
+  /*
+  if(digitalRead(Right_G) == HIGH){
+  state1 = false;
+  }
+  */
   state1 = false;
 }
 
@@ -198,6 +212,7 @@ void BlinkLED(const int YellowLED1, const int YellowLED2) {
     while((millis() - Time) <= 500)
     {
       PSignal(0);
+      //NSignal((BlinkYellow - i));
     }
     digitalWrite(YellowLED1, LOW);
     digitalWrite(YellowLED2, LOW);
@@ -205,22 +220,25 @@ void BlinkLED(const int YellowLED1, const int YellowLED2) {
     while((millis() - Time) <= 500)
     {
       PSignal(0);
+      //NSignal((BlinkYellow - i));
     }
    }
 }
 
 // 스위치 함수
-void SwitchLoop(int GLight1, int YLight1, int RLight1, int GLight2, int YLight2, int RLight2, long CheckTime) {
+void SwitchLoop(int GLight1, int YLight1, int RLight1, int GLight2, int YLight2, int RLight2) {
   int Time;
   long DTime;
-  int FTime;
-  int LTime;
+  
+  state1 = true;
   while(interval > (millis() - CheckTime)) {  //interval 시간 동안 진행
     if(state1 == false) { //위측 신호등이 녹색등일 동안에 스위치를 누를 경우 진행
-      
       DTime = millis();
-      while(3000 > (millis() - DTime)){ 
+      while(SDelay > (millis() - DTime)){ 
        PSignal(0);
+       Time = (SDelay - (millis() - DTime)) / 1000;
+       NSignal(Time);
+       CleanDOT();
       }
       digitalWrite(GLight1, LOW);
       digitalWrite(GLight2, LOW);
@@ -231,15 +249,25 @@ void SwitchLoop(int GLight1, int YLight1, int RLight1, int GLight2, int YLight2,
       //CheckTime = millis();
       while(interval > (millis() - CheckTime))
       {
-        //PSignal(1);
+        PSignal(1);
         Time = (interval - (millis() - CheckTime)) / 1000;
-        FTime = Time / 10;
-        LTime = Time % 10;
-        NSignal(FTime, LTime);
+        /*
+        if(state1 == false){
+           interval += IntervalAdd;
+           delay(100);
+        }
+        */
+        NSignal(Time);
+        CleanDOT();
+        state1 = true;
       }
       CleanDOT();
     }
     PSignal(0);
+    Time = (interval - (millis() - CheckTime)) / 1000;
+    NSignal(Time);
+    interval = IntervalSet;
+    CleanDOT();
   }
   if(digitalRead(GLight1) == HIGH) { //스위치가 눌리지 않았을 경우 진행
     digitalWrite(GLight1, LOW);
@@ -248,6 +276,8 @@ void SwitchLoop(int GLight1, int YLight1, int RLight1, int GLight2, int YLight2,
     digitalWrite(RLight1, HIGH);
     digitalWrite(RLight2, HIGH);
   }
+  else
+    BlinkLED(YLight1, YLight2);
 } 
 
 void CleanDOT() //도트 매트릭스 전체를 정리
@@ -256,16 +286,23 @@ void CleanDOT() //도트 매트릭스 전체를 정리
   {
      digitalWrite(row[i], LOW);
      digitalWrite(col[i], HIGH);
+     digitalWrite(row2[i], LOW);
+     digitalWrite(col2[i], HIGH);
   }
 }
 
-void NSignal(int FTime, int LTime)  // 남은 시간
+void NSignal(int Time)  // 남은 시간
 {
+  int FTime;
+  int LTime;
+
+  FTime = Time / 10;
+  LTime = Time % 10;
   for(int i = 0; i < 8; i++)
   {
+    CleanDOT();
     for(int j = 0; j < 4; j++)
     {
-      CleanDOT();
       digitalWrite(row[i], HIGH);
       if(number[FTime][i][j]){
        digitalWrite(col[j], LOW);
@@ -277,22 +314,25 @@ void NSignal(int FTime, int LTime)  // 남은 시간
       }
     }
   }
+  CleanDOT();
 }
 
 void PSignal(int GoStop)  //사람 모습
 {
   for(int i = 0; i < 8; i++)
   {
+    CleanDOT();
     for(int j = 0; j < 8; j++)
     {
-      CleanDOT();
-      digitalWrite(row[i], HIGH);
+      digitalWrite(row2[i], HIGH);
       if(PTLight[GoStop][i][j] == 1){
-       digitalWrite(col[j], LOW);
+       digitalWrite(col2[j], LOW);
         delay(1);
       }
     }
   }
 }
+
+
 
 
